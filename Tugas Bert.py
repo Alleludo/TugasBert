@@ -63,6 +63,19 @@ def get_bert_embeddings(texts, strategy):
     else:
         raise ValueError("Strategi tidak valid")
 
+# filter out examples with label = -1 in SNLI
+def filter_snli(example):
+    return example['label'] != -1
+
+snli = load_dataset_safe("snli", 1000)
+snli["train"] = snli["train"].filter(filter_snli)
+snli["test"] = snli["test"].filter(filter_snli)
+snli["validation"] = snli["validation"].filter(filter_snli) if "validation" in snli else None
+
+# Verify the labels after filtering
+print("SNLI unique labels in train:", set(snli["train"]["label"]))
+print("SNLI unique labels in test:", set(snli["test"]["label"]))
+
 # 5. Dataset Class
 class NLIDataset(Dataset):
     def __init__(self, dataset):
@@ -73,6 +86,8 @@ class NLIDataset(Dataset):
         
     def __getitem__(self, idx):
         item = self.dataset[idx]
+        # Ensure label is valid (0, 1, or 2)
+        assert item['label'] in {0, 1, 2}, f"Invalid label: {item['label']}"
         return {
             "text": f"{item['premise']} [SEP] {item['hypothesis']}",
             "label": item['label']
